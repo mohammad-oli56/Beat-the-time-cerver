@@ -31,13 +31,98 @@ async function run() {
     // await client.connect();
     const database = client.db("even-data");
     const evencollection = database.collection('event');
+    const usercollection = database.collection('users')
+    const bookingcollection = database.collection('books')
+
+      app.post('/books', async (req, res) => {
+      const event = req.body;
+      const result = await bookingcollection.insertOne(event);
+      res.send(result);
+    });
 
 
+
+    //add event in database
     app.post('/addeven', async (req, res) => {
-            const event = req.body;
-            const result = await evencollection.insertOne(event);
-            res.send(result);
-        });
+      const event = req.body;
+      const result = await evencollection.insertOne(event);
+      res.send(result);
+    });
+
+    // get all event data 
+    app.get('/alleven', async (req, res) => {
+      try {
+        const result = await evencollection.find().sort({ _id: -1 }).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+    // Node/Express (server)
+    const { ObjectId } = require("mongodb");
+
+    app.get("/event/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ message: "Invalid event id" });
+        }
+
+        const event = await evencollection.findOne({ _id: new ObjectId(id) });
+        if (!event) return res.status(404).json({ message: "Event not found" });
+
+        res.json(event);
+      } catch (err) {
+        console.error("GET /event/:id error:", err);
+        res.status(500).json({ message: "Error fetching event", error: err.message });
+      }
+    });
+
+
+    //add user 
+    // add user
+    app.post("/users", async (req, res) => {
+      try {
+        const { name, email, photo } = req.body;
+
+        // Check if user already exists
+        const existingUser = await usercollection.findOne({ email });
+        if (existingUser) {
+          return res.status(400).json({ message: "User already exists" });
+        }
+
+        // New user with default role "student"
+        const newUser = {
+          name,
+          email,
+          photo,
+          role: "student", // Default role
+          createdAt: new Date()
+        };
+
+        await usercollection.insertOne(newUser);
+
+        res.status(201).json({ message: "User saved successfully", user: newUser });
+      } catch (err) {
+        res.status(500).json({ message: "Error saving user", error: err.message });
+      }
+    });
+
+    app.get("/alluser", async (req, res) => {
+      try {
+        const users = await usercollection.find().sort({ createdAt: -1 }).toArray();
+        res.status(200).json(users); // Make sure it's an array
+      } catch (err) {
+        res.status(500).json({ message: "Error fetching users", error: err.message });
+      }
+    });
+
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. Successfully connected to MongoDB!");
