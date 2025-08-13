@@ -39,14 +39,14 @@ async function run() {
       try {
         const result = await bookingcollection.aggregate([
           {
-            $sort: { _id: -1 } // sort by newest first
+            $sort: { _id: -1 }
           },
           {
             $lookup: {
-              from: 'eventCollection',       // the collection name of your events
-              localField: 'eventiId',        // field in booking
-              foreignField: '_id',           // field in event collection
-              as: 'eventDetails'             // output array
+              from: 'eventCollection',
+              localField: 'eventiId',
+              foreignField: '_id',
+              as: 'eventDetails'
             }
           },
           {
@@ -90,6 +90,22 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
+
+    //get with email 
+    app.get('/events/:email', async (req, res) => {
+      const userEmail = req.params.email;
+      try {
+        const result = await evencollection
+          .find({ creatorEmail: userEmail }) // <-- fix here
+          .sort({ _id: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
 
     // Node/Express (server)
     const { ObjectId } = require("mongodb");
@@ -170,7 +186,7 @@ app.get('/', async (req, res) => {
     const collection = database.collection('testcollection');
     const docs = await collection.find({}).toArray();
 
-    
+
     let responseText = 'Hello from Express & MongoDB server!\n\nData:\n';
     docs.forEach((doc, index) => {
       responseText += `${index + 1}. ${JSON.stringify(doc)}\n`;
