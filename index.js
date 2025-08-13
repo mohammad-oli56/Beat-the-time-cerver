@@ -34,7 +34,38 @@ async function run() {
     const usercollection = database.collection('users')
     const bookingcollection = database.collection('books')
 
-      app.post('/books', async (req, res) => {
+
+    app.get('/getbooking', async (req, res) => {
+      try {
+        const result = await bookingcollection.aggregate([
+          {
+            $sort: { _id: -1 } // sort by newest first
+          },
+          {
+            $lookup: {
+              from: 'eventCollection',       // the collection name of your events
+              localField: 'eventiId',        // field in booking
+              foreignField: '_id',           // field in event collection
+              as: 'eventDetails'             // output array
+            }
+          },
+          {
+            $unwind: {
+              path: '$eventDetails',
+              preserveNullAndEmptyArrays: true // keep bookings even if event is missing
+            }
+          }
+        ]).toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
+
+    app.post('/books', async (req, res) => {
       const event = req.body;
       const result = await bookingcollection.insertOne(event);
       res.send(result);
@@ -139,7 +170,7 @@ app.get('/', async (req, res) => {
     const collection = database.collection('testcollection');
     const docs = await collection.find({}).toArray();
 
-    // সাধারণ টেক্সট হিসেবে রেসপন্স
+    
     let responseText = 'Hello from Express & MongoDB server!\n\nData:\n';
     docs.forEach((doc, index) => {
       responseText += `${index + 1}. ${JSON.stringify(doc)}\n`;
